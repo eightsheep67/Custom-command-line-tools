@@ -50,16 +50,29 @@ for /f "tokens=1* delims=_" %%a in ("!name_tmp!") do (
     )
 )
 
-:: 3. 用户确认 (使用 PowerShell 模拟按键实现预填内容)
-echo 建议名称已准备，请按需修改 (支持退格/编辑):
-set "final_name="
-:: 调用 PowerShell 在输入流中填入建议名
-for /f "delims=" %%i in ('powershell -Command "$s='!suggested_name!'; $w=New-Object -ComObject WScript.Shell; $w.SendKeys($s); Read-Host '确认名称'"') do (
+:: 3. 用户确认 (改用 VBScript 弹窗，完美规避输入法干扰)
+echo 正在弹出重命名窗口...
+
+:: 创建一个临时的 VBS 脚本来获取用户输入
+set "vbs_file=%temp%\input.vbs"
+echo strInput = InputBox("请修改文件名:", "8K VR 智能合并", "!suggested_name!") > "%vbs_file%"
+echo WScript.Echo strInput >> "%vbs_file%"
+
+:: 运行 VBS 并捕获输出
+for /f "delims=" %%i in ('cscript //nologo "%vbs_file%"') do (
     set "final_name=%%i"
 )
 
-:: 防止用户直接清空了名字导致报错
-if "!final_name!"=="" set "final_name=!suggested_name!"
+:: 如果用户点取消或清空，则恢复建议名
+if "!final_name!"=="" (
+    set "final_name=!suggested_name!"
+    echo 用户未输入，使用建议名: !final_name!
+) else (
+    echo 最终确认名称: !final_name!
+)
+
+:: 删除临时文件
+if exist "%vbs_file%" del "%vbs_file%"
 
 :: 4. 路径判断与合并
 set "current_drive=%~d0"

@@ -7,7 +7,7 @@ set "first_file="
 set count=0
 
 echo =======================================================
-echo        8K VR 智能合并 (精准切除最后两段后缀)
+echo         8K VR 智能合并 (带预填重命名功能)
 echo =======================================================
 
 for /f "delims=" %%i in ('dir /b /on *.mp4') do (
@@ -22,11 +22,8 @@ for /f "delims=" %%i in ('dir /b /on *.mp4') do (
 if !count! equ 0 (echo [错误] 未发现视频文件！ & pause & exit)
 echo -------------------------------------------------------
 
-:: 2. 精准取名逻辑：只切掉最后两个 "_" 之后的内容
-:: 示例: twojav.com@ipvr00344_1_8k -> twojav.com@ipvr00344
+:: 2. 精准取名逻辑
 set "full_name=!first_file!"
-
-:: 第一次剥离 (去掉 _8k)
 set "name_tmp=!full_name!"
 set "suggested_name=!full_name!"
 :find_last_1
@@ -40,7 +37,6 @@ for /f "tokens=1* delims=_" %%a in ("!name_tmp!") do (
     )
 )
 
-:: 第二次剥离 (去掉 _1)
 set "full_name=!suggested_name!"
 set "name_tmp=!full_name!"
 :find_last_2
@@ -54,12 +50,18 @@ for /f "tokens=1* delims=_" %%a in ("!name_tmp!") do (
     )
 )
 
-:: 3. 用户确认
-echo 建议名称: [ !suggested_name! ]
-set /p "user_input=直接回车使用建议名，或手动输入: "
-if "!user_input!"=="" (set "final_name=!suggested_name!") else (set "final_name=!user_input!")
+:: 3. 用户确认 (使用 PowerShell 模拟按键实现预填内容)
+echo 建议名称已准备，请按需修改 (支持退格/编辑):
+set "final_name="
+:: 调用 PowerShell 在输入流中填入建议名
+for /f "delims=" %%i in ('powershell -Command "$s='!suggested_name!'; $w=New-Object -ComObject WScript.Shell; $w.SendKeys($s); Read-Host '确认名称'"') do (
+    set "final_name=%%i"
+)
 
-:: 4. 路径判断与合并 (hvc1 + faststart)
+:: 防止用户直接清空了名字导致报错
+if "!final_name!"=="" set "final_name=!suggested_name!"
+
+:: 4. 路径判断与合并
 set "current_drive=%~d0"
 if /i "%current_drive%"=="D:" (
     set "output_path=!final_name!.mp4"

@@ -8,7 +8,7 @@ set "first_file_name="
 set count=0
 
 echo =======================================================
-echo      8K VR 智能合并 (精准切除 + 自动增加 _merge)
+echo      8K VR 智能合并 (当前文件夹名 + 自动增加 _merge)
 echo =======================================================
 
 for /f "delims=" %%i in ('dir /b /on *.mp4') do (
@@ -42,38 +42,11 @@ if /i "!codec!"=="hevc" (
 )
 echo -------------------------------------------------------
 
-:: 3. 精准取名逻辑：只切掉最后一个分隔符之后的内容
-set "suggested_name=!first_file_name!"
-
-:: 只执行一次末尾切除，防止把主编号(如-184)也切了
-set "temp_name=!suggested_name!"
-set "last_char_idx=-1"
-set "pos=0"
-
-:find_loop
-set "char=!temp_name:~%pos%,1!"
-if "!char!"=="" goto :find_done
-if "!char!"=="_" set "last_char_idx=%pos%"
-if "!char!"=="-" set "last_char_idx=%pos%"
-set /a pos+=1
-goto :find_loop
-
-:find_done
-if %last_char_idx% geq 0 (
-    set /a next_pos=%last_char_idx% + 1
-    set "tail=!temp_name:~%next_pos%!"
-    
-    set "need_strip=0"
-    :: 如果后缀是数字或者8k，则标记为需要切除
-    echo !tail!| findstr /r "^[0-9][0-9]*$ ^8k$ ^8K$" >nul && set "need_strip=1"
-    
-    if "!need_strip!"=="1" (
-        set "suggested_name=!temp_name:~0,%last_char_idx%!"
-    )
-)
+:: 3. 取名逻辑：直接获取当前文件夹的名称
+for %%I in ("%cd%") do set "suggested_name=%%~nxI"
 
 :: 4. 用户确认
-echo 建议名称: [ !suggested_name! ]
+echo 建议名称(当前文件夹名): [ !suggested_name! ]
 set "user_input="
 set /p "user_input=直接回车使用建议名，或手动输入: "
 if "!user_input!"=="" (set "final_name=!suggested_name!") else (set "final_name=!user_input!")
